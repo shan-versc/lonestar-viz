@@ -13,6 +13,7 @@ namespace aarf {
 
 class CartographerWorld;
 class ArcballCamera;
+struct PhysicsConfig;
 
 /// Per-instance GPU data (packed for std140/instanced arrays).
 struct BillboardInstance {
@@ -32,11 +33,14 @@ public:
                 const ArcballCamera& camera,
                 int width, int height,
                 float fps, bool physics_paused,
-                std::size_t queue_size);
+                std::size_t queue_size,
+                PhysicsConfig* phys_cfg = nullptr);
     void shutdown();
 
     /// Expose selected entity index (-1 = none) set by raycasting in main.cpp
     int  selected_node_idx{-1};
+    /// Entity selected for inspector + ribbon
+    uint32_t selected_entity{0xFFFFFFFFu};
 
 private:
     // ── OpenGL handles ────────────────────────────────────────────────────────
@@ -58,9 +62,12 @@ private:
     void draw_edges(CartographerWorld& world,
                     const glm::mat4& vp);
     void draw_imgui_overlay(CartographerWorld& world,
+                            const ArcballCamera& camera,
+                            int width, int height,
                             float fps,
                             bool physics_paused,
-                            std::size_t queue_size);
+                            std::size_t queue_size,
+                            PhysicsConfig* phys_cfg);
 
     static glm::vec3 value_to_heatmap(float t) noexcept;
 
