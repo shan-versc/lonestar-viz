@@ -10,10 +10,12 @@
 
 #include "registry.hpp"
 #include "physics.hpp"
+#include "octree_physics.hpp"
 #include "renderer.hpp"
 #include "ingest.hpp"
 #include "camera.hpp"
 #include "octree.hpp"
+#include "lod_culler.hpp"
 #include "components.hpp"
 
 #include <glm/glm.hpp>
@@ -118,10 +120,11 @@ int main() {
 
     aarf::CartographerWorld world;
     aarf::SpscQueue<4096>   queue;
-    aarf::PhysicsSystem     physics;
+    aarf::OctreePhysicsSystem physics;
     aarf::Renderer          renderer;
     aarf::IngestSystem      ingest;
     aarf::Octree            octree;
+    aarf::LodCuller         lod_culler;
 
     std::mt19937                          rng{42};
     std::uniform_real_distribution<float> pos_dist(-kSpread, kSpread);
