@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, "feature/**" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-linux:
+    name: Build (Ubuntu 22.04, GCC 12)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxi-dev libxxf86vm-dev \
+            gcc-12 g++-12
+
+      - name: Configure (CMake)
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_C_COMPILER=gcc-12 \
+                -DCMAKE_CXX_COMPILER=g++-12
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Verify binary exists
+        run: test -f build/aarf_cartographer && echo "Binary OK"
+
+  build-macos:
+    name: Build (macOS 14, Clang)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install cmake ninja
+
+      - name: Configure
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel $(sysctl -n hw.logicalcpu)
+
+      - name: Verify binary exists
+        run: test -f build/aarf_cartographer && echo "Binary OK"
