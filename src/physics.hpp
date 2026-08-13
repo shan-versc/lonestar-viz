@@ -14,6 +14,10 @@ struct PhysicsConfig {
     float max_force   = 40.f;   ///< Force clamp to prevent explosion
     float active_dist = 25.f;   ///< Radius around active nodes to simulate
     float impulse_k   = 6.f;    ///< Value-delta → impulse magnitude
+
+    /// Convergence hint: layout is considered stable when max node speed
+    /// drops below this threshold for 30 consecutive frames.
+    float convergence_speed = 0.05f;
 };
 
 class PhysicsSystem {
