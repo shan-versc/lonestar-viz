@@ -30,12 +30,18 @@ FetchContent_Declare(
   GIT_TAG        3.4
   GIT_SHALLOW    TRUE
 )
-set(GLFW_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS      OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS     OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES  OFF CACHE BOOL "" FORCE)
+# Disable Wayland on Linux CI runners that don't have wayland-scanner
+set(GLFW_BUILD_WAYLAND   OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_X11       ON  CACHE BOOL "" FORCE)
 
-# ── glad (OpenGL 4.1 core, no extensions) ─────────────────────────────────────
-# glad2: cmake/ subdir exposes glad_add_library(); we call it after MakeAvailable.
+# ── glad2 (OpenGL 4.1 core) ───────────────────────────────────────────────────
+# We use the glad2 cmake sub-directory which provides glad_add_library().
+# FetchContent downloads the repo; we point SOURCE_SUBDIR at cmake/ so that
+# FetchContent_MakeAvailable doesn't try to build the repo root (which has no
+# top-level CMakeLists in glad2).
 FetchContent_Declare(
   glad
   GIT_REPOSITORY https://github.com/Dav1dde/glad.git
@@ -71,11 +77,12 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(entt glfw glad glm nlohmann_json imgui)
 
-# ── Generate glad GL 4.1 core library via glad2 ───────────────────────────────
-include(${glad_SOURCE_DIR}/cmake/glad.cmake)
+# ── Generate glad GL 4.1 core library ─────────────────────────────────────────
+# glad_SOURCE_DIR is set by FetchContent; the cmake/ sub-dir exposes glad.cmake
+include("${glad_SOURCE_DIR}/cmake/glad.cmake")
 glad_add_library(glad_gl41 REPRODUCIBLE API gl:core=4.1)
 
-# ── ImGui as a static lib (we compile the backend files ourselves) ─────────────
+# ── ImGui as a static lib ─────────────────────────────────────────────────────
 add_library(imgui_lib STATIC
   ${imgui_SOURCE_DIR}/imgui.cpp
   ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -95,6 +102,7 @@ add_executable(aarf_cartographer
   src/main.cpp
   src/registry.cpp
   src/physics.cpp
+  src/octree_physics.cpp
   src/renderer.cpp
   src/ingest.cpp
 )
@@ -118,7 +126,7 @@ target_link_libraries(aarf_cartographer PRIVATE Threads::Threads)
 find_package(OpenGL REQUIRED)
 target_link_libraries(aarf_cartographer PRIVATE OpenGL::GL)
 
-# Platform: link dl on Linux
+# Platform: link dl on Linux (needed by glad2 at runtime)
 if(UNIX AND NOT APPLE)
   target_link_libraries(aarf_cartographer PRIVATE dl)
 endif()
