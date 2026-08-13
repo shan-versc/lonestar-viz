@@ -34,9 +34,12 @@ public:
 
 private:
     void accumulate_repulsion(CartographerWorld& world);
+
+protected:
     void accumulate_springs(CartographerWorld& world);
     void apply_value_impulses(CartographerWorld& world);
 
+private:
     PhysicsConfig cfg_;
     bool          paused_{false};
 

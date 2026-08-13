@@ -51,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew install cmake ninja
-          pip3 install --quiet jinja2
+          pip3 install --quiet --break-system-packages jinja2
 
       - name: Configure
         run: |
