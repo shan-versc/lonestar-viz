@@ -35,15 +35,14 @@ set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 # ── glad (OpenGL 4.1 core, no extensions) ─────────────────────────────────────
+# glad2: cmake/ subdir exposes glad_add_library(); we call it after MakeAvailable.
 FetchContent_Declare(
   glad
   GIT_REPOSITORY https://github.com/Dav1dde/glad.git
-  GIT_TAG        v0.1.36
+  GIT_TAG        v2.0.8
   GIT_SHALLOW    TRUE
+  SOURCE_SUBDIR  cmake
 )
-set(GLAD_PROFILE   "core"  CACHE STRING "" FORCE)
-set(GLAD_API       "gl=4.1" CACHE STRING "" FORCE)
-set(GLAD_GENERATOR "c"     CACHE STRING "" FORCE)
 
 # ── GLM ───────────────────────────────────────────────────────────────────────
 FetchContent_Declare(
@@ -71,6 +70,10 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(entt glfw glad glm nlohmann_json imgui)
+
+# ── Generate glad GL 4.1 core library via glad2 ───────────────────────────────
+include(${glad_SOURCE_DIR}/cmake/glad.cmake)
+glad_add_library(glad_gl41 REPRODUCIBLE API gl:core=4.1)
 
 # ── ImGui as a static lib (we compile the backend files ourselves) ─────────────
 add_library(imgui_lib STATIC
@@ -101,7 +104,7 @@ target_include_directories(aarf_cartographer PRIVATE src)
 target_link_libraries(aarf_cartographer PRIVATE
   EnTT::EnTT
   glfw
-  glad
+  glad_gl41
   glm::glm
   nlohmann_json::nlohmann_json
   imgui_lib

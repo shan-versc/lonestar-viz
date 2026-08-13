@@ -5,7 +5,7 @@
 //   Main thread:  GLFW + OpenGL + ImGui + Physics step + ECS reads
 //   Ingest thread: synthetic data producer → SpscQueue
 // ─────────────────────────────────────────────────────────────────────────────
-#include <glad/glad.h>        // must come before GLFW
+#include <glad/gl.h>        // must come before GLFW
 #include <GLFW/glfw3.h>
 
 #include "registry.hpp"
@@ -97,7 +97,7 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);  // vsync
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
         std::fputs("GLAD init failed\n", stderr);
         glfwTerminate(); return 1;
     }
