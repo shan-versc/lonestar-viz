@@ -78,8 +78,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(entt glfw glad glm nlohmann_json imgui)
 
 # ── Generate glad GL 4.1 core library ─────────────────────────────────────────
-# glad_SOURCE_DIR is set by FetchContent; the cmake/ sub-dir exposes glad.cmake
-include("${glad_SOURCE_DIR}/cmake/glad.cmake")
+# FetchContent_MakeAvailable(glad) runs cmake/CMakeLists.txt which calls
+# include(GladConfig.cmake) — so glad_add_library() is now in scope.
 glad_add_library(glad_gl41 REPRODUCIBLE API gl:core=4.1)
 
 # ── ImGui as a static lib ─────────────────────────────────────────────────────
