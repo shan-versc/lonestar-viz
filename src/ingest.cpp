@@ -6,6 +6,7 @@
 #include <chrono>
 #include <random>
 #include <cmath>
+#include <cinttypes>
 #include <algorithm>
 #include <glm/glm.hpp>
 

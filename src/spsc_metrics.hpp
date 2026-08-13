@@ -11,6 +11,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <cinttypes>
 #include <cstdio>
 #include "spsc_queue.hpp"
 

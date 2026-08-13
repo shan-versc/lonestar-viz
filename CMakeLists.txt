@@ -109,6 +109,9 @@ add_executable(aarf_cartographer
 
 target_include_directories(aarf_cartographer PRIVATE src)
 
+# GLM experimental extensions (gtx/quaternion, gtx/norm, etc.)
+target_compile_definitions(aarf_cartographer PRIVATE GLM_ENABLE_EXPERIMENTAL)
+
 target_link_libraries(aarf_cartographer PRIVATE
   EnTT::EnTT
   glfw
