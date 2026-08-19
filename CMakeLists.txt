@@ -98,11 +98,12 @@ target_include_directories(imgui_lib PUBLIC
 target_link_libraries(imgui_lib PUBLIC glfw)
 
 # ── main executable ───────────────────────────────────────────────────────────
+# NOTE: do not list src/octree_physics.cpp here — it ships with the
+#       feature/octree-physics branch and is added back by that feature.
 add_executable(aarf_cartographer
   src/main.cpp
   src/registry.cpp
   src/physics.cpp
-  src/octree_physics.cpp
   src/renderer.cpp
   src/ingest.cpp
 )
