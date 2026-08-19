@@ -205,18 +205,22 @@ int main() {
         // Raycast on click (only if ImGui didn't consume it)
         if (g_click_pending && !ImGui::GetIO().WantCaptureMouse) {
             g_click_pending = false;
+            auto& reg = world.reg();
+
             entt::entity hit = raycaster.pick(
                 (float)g_click_x, (float)g_click_y,
                 g_width, g_height, g_camera, world);
+
+            // Clear the previous selection first; clicking empty space
+            // deselects, clicking a node re-selects it.
+            auto prev = reg.view<aarf::SelectedTag>();
+            for (auto e : prev) reg.remove<aarf::SelectedTag>(e);
+            renderer.selected_entity = 0xFFFFFFFFu;
+
             if (hit != entt::null) {
-                // Tag it selected in ECS
-                auto& reg = world.reg();
-                // Clear previous selection
-                auto prev = reg.view<aarf::SelectedTag>();
-                for (auto e : prev) reg.remove<aarf::SelectedTag>(e);
                 reg.emplace_or_replace<aarf::SelectedTag>(hit);
-                renderer.selected_entity = static_cast<uint32_t>(
-                    entt::to_integral(hit));
+                renderer.selected_entity =
+                    static_cast<uint32_t>(entt::to_integral(hit));
             }
         } else if (g_click_pending) {
             g_click_pending = false;

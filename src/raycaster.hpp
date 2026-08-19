@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <entt/entt.hpp>
+#include <cmath>
 #include <limits>
 #include "registry.hpp"
 #include "components.hpp"
