@@ -12,9 +12,10 @@ namespace aarf {
 void OctreePhysicsSystem::step(CartographerWorld& world, float dt) {
     if (paused()) return;
 
-    // Rebuild octree every 5 frames (cheap enough; positions change slowly)
-    if (frame_ % 5 == 0)
-        rebuild_octree(world);
+    // Rebuild the octree from the *current* node positions every step so
+    // neighbour queries never hit a stale spatial index (positions moved
+    // during the previous tick).
+    rebuild_octree(world);
 
     accumulate_repulsion_octree(world);
 
@@ -23,7 +24,6 @@ void OctreePhysicsSystem::step(CartographerWorld& world, float dt) {
     accumulate_springs(world);
     apply_value_impulses(world);
     world.tick(dt);
-    ++frame_;
 }
 
 void OctreePhysicsSystem::rebuild_octree(CartographerWorld& world) {

@@ -24,33 +24,32 @@ class LodCuller {
 public:
     /// Distance beyond which entities collapse to cluster sprites.
     float cluster_dist{80.f};
+    /// Distance beyond which entities are skipped entirely (far cull plane).
+    float cull_dist{300.f};
     /// If a leaf has more than this many entities, force cluster.
     int   cluster_threshold{8};
 
     LodResult cull(const Octree& octree,
                    const ArcballCamera& camera,
                    CartographerWorld& world) const {
-        LodResult result;
-        auto& reg  = world.reg();
-        auto  view = reg.view<NodeComponent>();
-        const glm::vec3 eye = camera.eye();
+        LodResult       result;
+        auto&           reg  = world.reg();
+        const glm::vec3 eye  = camera.eye();
 
-        // Walk all entities; categorise by distance to camera
-        for (auto e : view) {
-            const auto& n    = view.get<NodeComponent>(e);
-            float       dist = glm::length(n.pos - eye);
+        // Only entities within the far cull plane are considered at all —
+        // everything else is skipped without touching the registry.
+        auto candidates = octree.query_sphere(eye, cull_dist);
 
-            if (dist > 300.f) {
-                ++result.culled;
-                continue;
-            }
+        for (auto e : candidates) {
+            const auto* n = reg.try_get<NodeComponent>(e);
+            if (!n) { ++result.culled; continue; }   // entity released mid-frame
 
-            if (dist > cluster_dist || !n.active)
+            const float dist = glm::length(n->pos - eye);
+            if (dist > cluster_dist || !n->active)
                 result.clustered.push_back(e);
             else
                 result.full_detail.push_back(e);
         }
-
         return result;
     }
 };

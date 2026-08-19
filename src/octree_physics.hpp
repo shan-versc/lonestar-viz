@@ -35,7 +35,6 @@ private:
     void accumulate_repulsion_octree(CartographerWorld& world);
 
     Octree octree_;
-    int    frame_{0};
 };
 
 } // namespace aarf

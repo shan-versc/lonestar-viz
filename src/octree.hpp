@@ -88,13 +88,14 @@ private:
 
 class Octree {
 public:
-    explicit Octree(float world_half = 100.f) {
-        root_.bounds = { glm::vec3(0.f), world_half };
+    explicit Octree(float world_half = 100.f)
+        : world_half_(world_half) {
+        root_.bounds = { glm::vec3(0.f), world_half_ };
     }
 
     void clear() {
-        root_ = OctreeNode{};
-        root_.bounds = { glm::vec3(0.f), 100.f };
+        root_      = OctreeNode{};
+        root_.bounds = { glm::vec3(0.f), world_half_ };
     }
 
     void insert(entt::entity e, const glm::vec3& pos) {
@@ -116,7 +117,8 @@ public:
     [[nodiscard]] const OctreeNode& root() const noexcept { return root_; }
 
 private:
-    OctreeNode root_;
+    float       world_half_{100.f};
+    OctreeNode  root_;
 };
 
 } // namespace aarf

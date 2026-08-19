@@ -14,8 +14,6 @@
 #include "renderer.hpp"
 #include "ingest.hpp"
 #include "camera.hpp"
-#include "octree.hpp"
-#include "lod_culler.hpp"
 #include "components.hpp"
 
 #include <glm/glm.hpp>
@@ -123,8 +121,6 @@ int main() {
     aarf::OctreePhysicsSystem physics;
     aarf::Renderer          renderer;
     aarf::IngestSystem      ingest;
-    aarf::Octree            octree;
-    aarf::LodCuller         lod_culler;
 
     std::mt19937                          rng{42};
     std::uniform_real_distribution<float> pos_dist(-kSpread, kSpread);
@@ -160,7 +156,6 @@ int main() {
     // ── Main loop ─────────────────────────────────────────────────────────────
     using clock = std::chrono::steady_clock;
     auto  prev  = clock::now();
-    int   frame = 0;
     float fps   = 60.f;
 
     while (!glfwWindowShouldClose(window)) {
@@ -182,18 +177,9 @@ int main() {
         // Drain ingest queue
         ingest.drain(world);
 
-        // Physics
+        // Physics — OctreePhysicsSystem rebuilds and owns its own spatial index.
         if (!g_physics_paused)
             physics.step(world, dt);
-
-        // Rebuild octree every 10 frames
-        if (frame % 10 == 0) {
-            octree.clear();
-            auto& reg  = world.reg();
-            auto  view = reg.view<aarf::NodeComponent>();
-            for (auto e : view)
-                octree.insert(e, view.get<aarf::NodeComponent>(e).pos);
-        }
 
         // Render
         glfwGetFramebufferSize(window, &g_width, &g_height);
@@ -201,7 +187,6 @@ int main() {
                         fps, g_physics_paused, ingest.queue_approx_size());
 
         glfwSwapBuffers(window);
-        ++frame;
     }
 
     // Cleanup
