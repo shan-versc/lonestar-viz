@@ -17,6 +17,8 @@
 #include "raycaster.hpp"
 #include "components.hpp"
 
+#include <imgui.h>
+
 #include <glm/glm.hpp>
 
 #include <cstdio>
