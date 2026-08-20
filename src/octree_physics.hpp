@@ -27,12 +27,21 @@ public:
     /// Expose octree for external LOD queries (renderer, raycaster).
     [[nodiscard]] const Octree& octree() const noexcept { return octree_; }
 
-    /// Threshold: skip exact force for pairs beyond this distance.
+    /// Radius within which repulsion is computed exactly (near field).
     float cull_radius{55.f};
+    /// Maximum aggregated range for the Barnes-Hut far field (world extent).
+    float bh_radius{130.f};
+    /// Barnes-Hut openness criterion s/d: below this, cells are collapsed to
+    /// their centre of mass (0 = exact, ~0.5-0.8 = typical approximation).
+    float theta{0.7f};
 
 private:
     void rebuild_octree(CartographerWorld& world);
     void accumulate_repulsion_octree(CartographerWorld& world);
+    void accumulate_bh_far_field(glm::vec3&       force,
+                                 const glm::vec3& pos,
+                                 const OctreeNode& node,
+                                 float k_r, float f_max) const;
 
     Octree octree_;
 };

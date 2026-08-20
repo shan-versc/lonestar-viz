@@ -5,15 +5,34 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# ── options ──────────────────────────────────────────────────────────────────
+option(AARF_BUILD_TESTS                "Build the unit test suite"      ON)
+option(AARF_TREAT_WARNINGS_AS_ERRORS   "First-party warnings -> errors" ON)
+option(AARF_FETCHCONTENT_DISCONNECTED  "No network fetch; use cache"    OFF)
+
 # ── compiler warnings ──────────────────────────────────────────────────────────
-if(MSVC)
-  add_compile_options(/W4 /permissive-)
-else()
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
+# Applied to first-party targets only (via aarf_apply_warnings) so that
+# FetchContent dependencies are not polluted with -Werror.
+function(aarf_apply_warnings target)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive-)
+    if(AARF_TREAT_WARNINGS_AS_ERRORS)
+      target_compile_options(${target} PRIVATE /WX)
+    endif()
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    if(AARF_TREAT_WARNINGS_AS_ERRORS)
+      target_compile_options(${target} PRIVATE -Werror)
+    endif()
+  endif()
+endfunction()
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
+
+# Allow fully offline / cached builds (see the AARF_FETCHCONTENT_DISCONNECTED option).
+set(FETCHCONTENT_FULLY_DISCONNECTED  ${AARF_FETCHCONTENT_DISCONNECTED})
+set(FETCHCONTENT_UPDATES_DISCONNECTED ${AARF_FETCHCONTENT_DISCONNECTED})
 
 # ── EnTT ──────────────────────────────────────────────────────────────────────
 FetchContent_Declare(
@@ -113,6 +132,9 @@ target_include_directories(aarf_cartographer PRIVATE src)
 # GLM experimental extensions (gtx/quaternion, gtx/norm, etc.)
 target_compile_definitions(aarf_cartographer PRIVATE GLM_ENABLE_EXPERIMENTAL)
 
+# First-party warning flags (incl. -Werror when enabled)
+aarf_apply_warnings(aarf_cartographer)
+
 target_link_libraries(aarf_cartographer PRIVATE
   EnTT::EnTT
   glfw
@@ -133,4 +155,20 @@ target_link_libraries(aarf_cartographer PRIVATE OpenGL::GL)
 # Platform: link dl on Linux (needed by glad2 at runtime)
 if(UNIX AND NOT APPLE)
   target_link_libraries(aarf_cartographer PRIVATE dl)
+endif()
+
+# ── unit tests ─────────────────────────────────────────────────────────────────
+if(AARF_BUILD_TESTS)
+  enable_testing()
+  add_executable(aarf_tests
+    tests/test_core.cpp
+    src/registry.cpp
+    src/physics.cpp
+    src/octree_physics.cpp
+  )
+  target_include_directories(aarf_tests PRIVATE src)
+  target_compile_definitions(aarf_tests PRIVATE GLM_ENABLE_EXPERIMENTAL)
+  target_link_libraries(aarf_tests PRIVATE EnTT::EnTT glm::glm)
+  aarf_apply_warnings(aarf_tests)
+  add_test(NAME aarf_core COMMAND aarf_tests)
 endif()

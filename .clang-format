@@ -1,0 +1,9 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 100
+BreakBeforeBraces: Allman
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackParameters: false
+SortIncludes: false
+NamespaceIndentation: None
+PointerAlignment: Right
