@@ -14,7 +14,10 @@
 #include "renderer.hpp"
 #include "ingest.hpp"
 #include "camera.hpp"
+#include "raycaster.hpp"
 #include "components.hpp"
+
+#include <imgui.h>
 
 #include <glm/glm.hpp>
 
@@ -40,6 +43,8 @@ struct MouseState {
 bool  g_physics_paused{false};
 bool  g_should_reset{false};
 int   g_width{1280}, g_height{720};
+bool  g_click_pending{false};
+double g_click_x{0}, g_click_y{0};
 
 void glfw_key_callback(GLFWwindow* w, int key, int /*sc*/, int action, int /*mod*/) {
     if (action != GLFW_PRESS) return;
@@ -49,8 +54,14 @@ void glfw_key_callback(GLFWwindow* w, int key, int /*sc*/, int action, int /*mod
 }
 
 void glfw_mouse_button_callback(GLFWwindow* /*w*/, int btn, int action, int /*mod*/) {
-    if (btn == GLFW_MOUSE_BUTTON_LEFT)
+    if (btn == GLFW_MOUSE_BUTTON_LEFT) {
         g_mouse.lmb = (action == GLFW_PRESS);
+        if (action == GLFW_PRESS) {
+            g_click_pending = true;
+            g_click_x = g_mouse.last_x;
+            g_click_y = g_mouse.last_y;
+        }
+    }
     if (btn == GLFW_MOUSE_BUTTON_MIDDLE)
         g_mouse.mmb = (action == GLFW_PRESS);
 }
@@ -121,6 +132,7 @@ int main() {
     aarf::OctreePhysicsSystem physics;
     aarf::Renderer          renderer;
     aarf::IngestSystem      ingest;
+    aarf::Raycaster         raycaster;
 
     std::mt19937                          rng{42};
     std::uniform_real_distribution<float> pos_dist(-kSpread, kSpread);
@@ -181,10 +193,35 @@ int main() {
         if (!g_physics_paused)
             physics.step(world, dt);
 
+        // Raycast on click (only if ImGui didn't consume it)
+        if (g_click_pending && !ImGui::GetIO().WantCaptureMouse) {
+            g_click_pending = false;
+            auto& reg = world.reg();
+
+            entt::entity hit = raycaster.pick(
+                (float)g_click_x, (float)g_click_y,
+                g_width, g_height, g_camera, world);
+
+            // Clear the previous selection first; clicking empty space
+            // deselects, clicking a node re-selects it.
+            auto prev = reg.view<aarf::SelectedTag>();
+            for (auto e : prev) reg.remove<aarf::SelectedTag>(e);
+            renderer.selected_entity = 0xFFFFFFFFu;
+
+            if (hit != entt::null) {
+                reg.emplace_or_replace<aarf::SelectedTag>(hit);
+                renderer.selected_entity =
+                    static_cast<uint32_t>(entt::to_integral(hit));
+            }
+        } else if (g_click_pending) {
+            g_click_pending = false;
+        }
+
         // Render
         glfwGetFramebufferSize(window, &g_width, &g_height);
         renderer.render(world, g_camera, g_width, g_height,
-                        fps, g_physics_paused, ingest.queue_approx_size());
+                        fps, g_physics_paused, ingest.queue_approx_size(),
+                        &physics.config());
 
         glfwSwapBuffers(window);
     }

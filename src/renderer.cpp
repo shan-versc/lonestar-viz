@@ -5,6 +5,9 @@
 #include "registry.hpp"
 #include "components.hpp"
 #include "camera.hpp"
+#include "imgui_panels.hpp"
+#include "history_ribbon.hpp"
+#include "physics.hpp"
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -187,7 +190,8 @@ void Renderer::render(CartographerWorld& world,
                       const ArcballCamera& camera,
                       int width, int height,
                       float fps, bool physics_paused,
-                      std::size_t queue_size) {
+                      std::size_t queue_size,
+                      PhysicsConfig* phys_cfg) {
     glViewport(0, 0, width, height);
     glClearColor(0.04f, 0.04f, 0.08f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -243,7 +247,7 @@ void Renderer::render(CartographerWorld& world,
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    draw_imgui_overlay(world, fps, physics_paused, queue_size);
+    draw_imgui_overlay(world, camera, width, height, fps, physics_paused, queue_size, phys_cfg);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -292,30 +296,35 @@ void Renderer::draw_edges(CartographerWorld& world, const glm::mat4& vp) {
 }
 
 void Renderer::draw_imgui_overlay(CartographerWorld& world,
+                                   const ArcballCamera& camera,
+                                   int width, int height,
                                    float fps,
                                    bool physics_paused,
-                                   std::size_t queue_size) {
-    ImGui::SetNextWindowPos({10, 10}, ImGuiCond_Always);
-    ImGui::SetNextWindowSize({300, 0}, ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.75f);
-    ImGui::Begin("Cartographer", nullptr,
-                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                 ImGuiWindowFlags_NoCollapse);
+                                   std::size_t queue_size,
+                                   PhysicsConfig* phys_cfg) {
+    // Static panel instances — survive across frames
+    static StatsPanel    stats;
+    static NodeInspector inspector;
+    static PhysicsPanel  phys_panel;
+    static HistoryRibbon ribbon;
 
-    ImGui::Text("FPS: %.1f", fps);
-    ImGui::Text("Nodes: %zu  (active: %zu)",
-                world.node_count(), world.get_active_nodes().size());
-    ImGui::Text("Edges: %zu", world.edge_count());
-    ImGui::Text("Ingest queue: %zu", queue_size);
-    ImGui::Separator();
-    ImGui::TextColored(physics_paused ? ImVec4(1,0.3f,0.3f,1) : ImVec4(0.3f,1,0.3f,1),
-                       physics_paused ? "Physics: PAUSED [SPACE]" : "Physics: running");
-    ImGui::Separator();
-    ImGui::TextDisabled("LMB drag: orbit");
-    ImGui::TextDisabled("MMB drag: pan");
-    ImGui::TextDisabled("Scroll: zoom");
-    ImGui::TextDisabled("R: reset layout");
-    ImGui::End();
+    // Stats overlay (always shown)
+    stats.draw(world, fps, physics_paused, queue_size);
+
+    // Physics tuner
+    if (phys_cfg)
+        phys_panel.draw(*phys_cfg);
+
+    // Selected-node inspector + ribbon
+    if (selected_entity != 0xFFFFFFFFu) {
+        entt::entity sel = static_cast<entt::entity>(selected_entity);
+        inspector.selected = sel;
+        inspector.draw(world);
+
+        const glm::mat4 vp = camera.projection((float)width / (float)height)
+                           * camera.view();
+        ribbon.draw(sel, world, vp, width, height);
+    }
 }
 
 void Renderer::shutdown() {
