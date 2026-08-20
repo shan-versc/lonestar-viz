@@ -191,7 +191,8 @@ void Renderer::render(CartographerWorld& world,
                       int width, int height,
                       float fps, bool physics_paused,
                       std::size_t queue_size,
-                      PhysicsConfig* phys_cfg) {
+                      PhysicsConfig* phys_cfg,
+                      const std::vector<entt::entity>* visible_nodes) {
     glViewport(0, 0, width, height);
     glClearColor(0.04f, 0.04f, 0.08f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -211,7 +212,8 @@ void Renderer::render(CartographerWorld& world,
     auto& reg  = world.reg();
     auto  view_nodes = reg.view<NodeComponent>();
 
-    for (auto e : view_nodes) {
+    auto push_instance = [&](entt::entity e) {
+        if (!view_nodes.contains(e)) return;
         const auto& n = view_nodes.get<NodeComponent>(e);
         BillboardInstance bi;
         bi.world_pos = n.pos;
@@ -223,6 +225,14 @@ void Renderer::render(CartographerWorld& world,
             bi.size *= 1.8f;
         }
         instances.push_back(bi);
+    };
+
+    // LOD path: render only the caller-supplied "full detail" set (nodes that
+    // passed culling). Plain path: render every node.
+    if (visible_nodes && !visible_nodes->empty()) {
+        for (auto e : *visible_nodes) push_instance(e);
+    } else {
+        for (auto e : view_nodes) push_instance(e);
     }
 
     // Clamp to buffer capacity
@@ -316,7 +326,7 @@ void Renderer::draw_imgui_overlay(CartographerWorld& world,
         phys_panel.draw(*phys_cfg);
 
     // Selected-node inspector + ribbon
-    if (selected_entity != 0xFFFFFFFFu) {
+    if (selected_entity != Renderer::kNoSelection) {
         entt::entity sel = static_cast<entt::entity>(selected_entity);
         inspector.selected = sel;
         inspector.draw(world);

@@ -32,6 +32,11 @@ struct OctreeNode {
     std::array<std::unique_ptr<OctreeNode>, 8>      children{};
     bool                                  is_leaf{true};
 
+    /// Aggregate centre of mass and total weight (for Barnes-Hut far-field).
+    /// Set by recalc() / Octree::rebuild_masses() after the tree is populated.
+    glm::vec3 com{0.f};
+    float     mass{0.f};
+
     static constexpr int kMaxItems = 16;
     static constexpr int kMaxDepth = 6;
 
@@ -65,6 +70,28 @@ struct OctreeNode {
         std::size_t n = 0;
         for (auto& c : children) if (c) n += c->count();
         return n;
+    }
+
+    /// Recompute the centre of mass / total weight for this node and its
+    /// descendants (post-order). Leaves average their items; interior nodes
+    /// weight-average their children.
+    void recalc() noexcept {
+        if (is_leaf) {
+            com  = glm::vec3(0.f);
+            mass = 0.f;
+            for (const auto& [e, p] : items) { com += p; mass += 1.f; }
+            if (mass > 0.f) com /= mass;
+            return;
+        }
+        com  = glm::vec3(0.f);
+        mass = 0.f;
+        for (auto& c : children) {
+            if (!c) continue;
+            c->recalc();
+            com  += c->com * c->mass;
+            mass += c->mass;
+        }
+        if (mass > 0.f) com /= mass;
     }
 
 private:
@@ -101,6 +128,9 @@ public:
     void insert(entt::entity e, const glm::vec3& pos) {
         root_.insert(e, pos);
     }
+
+    /// Recompute centre-of-mass / weight aggregates once the tree is populated.
+    void rebuild_masses() noexcept { root_.recalc(); }
 
     [[nodiscard]] std::vector<entt::entity>
     query_range(const AABB& range) const {

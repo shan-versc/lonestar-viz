@@ -11,6 +11,7 @@
 #include "registry.hpp"
 #include "physics.hpp"
 #include "octree_physics.hpp"
+#include "lod_culler.hpp"
 #include "renderer.hpp"
 #include "ingest.hpp"
 #include "camera.hpp"
@@ -27,6 +28,8 @@
 #include <random>
 #include <string>
 #include <chrono>
+#include <vector>
+#include <algorithm>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Globals shared with GLFW callbacks (minimal, callback-only)
@@ -45,6 +48,9 @@ bool  g_should_reset{false};
 int   g_width{1280}, g_height{720};
 bool  g_click_pending{false};
 double g_click_x{0}, g_click_y{0};
+// Window→framebuffer pixel scale (HiDPI/retina). Cursor callbacks report in
+// window coordinates; the raycast and GL viewport use framebuffer pixels.
+float g_content_scale_x{1.0f}, g_content_scale_y{1.0f};
 
 void glfw_key_callback(GLFWwindow* w, int key, int /*sc*/, int action, int /*mod*/) {
     if (action != GLFW_PRESS) return;
@@ -58,8 +64,9 @@ void glfw_mouse_button_callback(GLFWwindow* /*w*/, int btn, int action, int /*mo
         g_mouse.lmb = (action == GLFW_PRESS);
         if (action == GLFW_PRESS) {
             g_click_pending = true;
-            g_click_x = g_mouse.last_x;
-            g_click_y = g_mouse.last_y;
+            // Convert window coords to framebuffer pixels for the raycaster.
+            g_click_x = g_mouse.last_x * g_content_scale_x;
+            g_click_y = g_mouse.last_y * g_content_scale_y;
         }
     }
     if (btn == GLFW_MOUSE_BUTTON_MIDDLE)
@@ -77,6 +84,11 @@ void glfw_cursor_callback(GLFWwindow* /*w*/, double xpos, double ypos) {
 
 void glfw_scroll_callback(GLFWwindow* /*w*/, double /*xo*/, double yo) {
     g_camera.on_scroll((float)yo);
+}
+
+void glfw_content_scale_callback(GLFWwindow* /*w*/, float x, float y) {
+    g_content_scale_x = x;
+    g_content_scale_y = y;
 }
 
 void glfw_resize_callback(GLFWwindow* /*w*/, int w, int h) {
@@ -121,6 +133,8 @@ int main() {
     glfwSetCursorPosCallback(window,   glfw_cursor_callback);
     glfwSetScrollCallback(window,      glfw_scroll_callback);
     glfwSetFramebufferSizeCallback(window, glfw_resize_callback);
+    glfwSetWindowContentScaleCallback(window, glfw_content_scale_callback);
+    glfwGetWindowContentScale(window, &g_content_scale_x, &g_content_scale_y);
 
     // ── Build world ───────────────────────────────────────────────────────────
     constexpr int   kNodes = 200;
@@ -133,6 +147,7 @@ int main() {
     aarf::Renderer          renderer;
     aarf::IngestSystem      ingest;
     aarf::Raycaster         raycaster;
+    aarf::LodCuller         lod_culler;
 
     std::mt19937                          rng{42};
     std::uniform_real_distribution<float> pos_dist(-kSpread, kSpread);
@@ -206,7 +221,7 @@ int main() {
             // deselects, clicking a node re-selects it.
             auto prev = reg.view<aarf::SelectedTag>();
             for (auto e : prev) reg.remove<aarf::SelectedTag>(e);
-            renderer.selected_entity = 0xFFFFFFFFu;
+            renderer.selected_entity = aarf::Renderer::kNoSelection;
 
             if (hit != entt::null) {
                 reg.emplace_or_replace<aarf::SelectedTag>(hit);
@@ -217,11 +232,20 @@ int main() {
             g_click_pending = false;
         }
 
-        // Render
+        // Render (LOD: restrict drawing to nodes that pass octree-based culling)
         glfwGetFramebufferSize(window, &g_width, &g_height);
+        aarf::LodResult lod = lod_culler.cull(physics.octree(), g_camera, world);
+        std::vector<entt::entity> visible = lod.full_detail;
+        // Keep the actively-selected node visible even if it falls outside the
+        // LOD threshold, otherwise it would visually disappear.
+        if (renderer.selected_entity != aarf::Renderer::kNoSelection) {
+            entt::entity sel = static_cast<entt::entity>(renderer.selected_entity);
+            if (std::find(visible.begin(), visible.end(), sel) == visible.end())
+                visible.push_back(sel);
+        }
         renderer.render(world, g_camera, g_width, g_height,
                         fps, g_physics_paused, ingest.queue_approx_size(),
-                        &physics.config());
+                        &physics.config(), &visible);
 
         glfwSwapBuffers(window);
     }

@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>
+#include <entt/entt.hpp>
 
 struct GLFWwindow;
 
@@ -28,19 +29,23 @@ public:
     Renderer()  = default;
     ~Renderer() = default;
 
+    /// Sentinel for "no entity selected" (sentinel, not a real entity id).
+    static constexpr uint32_t kNoSelection = 0xFFFFFFFFu;
+
     bool init(GLFWwindow* window);
     void render(CartographerWorld& world,
                 const ArcballCamera& camera,
                 int width, int height,
                 float fps, bool physics_paused,
                 std::size_t queue_size,
-                PhysicsConfig* phys_cfg = nullptr);
+                PhysicsConfig* phys_cfg = nullptr,
+                const std::vector<entt::entity>* visible_nodes = nullptr);
     void shutdown();
 
     /// Expose selected entity index (-1 = none) set by raycasting in main.cpp
     int  selected_node_idx{-1};
-    /// Entity selected for inspector + ribbon
-    uint32_t selected_entity{0xFFFFFFFFu};
+    /// Entity selected for inspector + ribbon (kNoSelection = none).
+    uint32_t selected_entity{kNoSelection};
 
 private:
     // ── OpenGL handles ────────────────────────────────────────────────────────

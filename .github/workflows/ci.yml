@@ -37,6 +37,9 @@ jobs:
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
+      - name: Run unit tests (aarf_tests)
+        run: ctest --test-dir build --output-on-failure
+
       - name: Verify binary exists
         run: test -f build/aarf_cartographer && echo "Binary OK"
 
@@ -61,6 +64,9 @@ jobs:
 
       - name: Build
         run: cmake --build build --parallel $(sysctl -n hw.logicalcpu)
+
+      - name: Run unit tests (aarf_tests)
+        run: ctest --test-dir build --output-on-failure
 
       - name: Verify binary exists
         run: test -f build/aarf_cartographer && echo "Binary OK"
