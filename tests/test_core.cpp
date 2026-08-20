@@ -89,9 +89,12 @@ void test_bh_repulsion_direction() {
 // ── physics: everything stays finite and bounded after many steps ────────────
 void test_long_step_stability() {
     aarf::CartographerWorld world;
-    for (int i = 0; i < 8; ++i)
-        world.create_node("n" + std::to_string(i),
+    for (int i = 0; i < 8; ++i) {
+        char name[16];
+        std::snprintf(name, sizeof(name), "n%d", i);
+        world.create_node(name,
                           glm::vec3(20.f * (i % 4), 0.f, 20.f * (i / 4)), 0.5f);
+    }
 
     aarf::OctreePhysicsSystem phys;
     for (int s = 0; s < 50; ++s)
